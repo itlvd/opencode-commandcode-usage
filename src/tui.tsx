@@ -31,7 +31,6 @@ export default Plugin.define({
     }
     const Sidebar = () => <box flexDirection="column" paddingTop={1}>
       <text fg={ctx.theme.text.base}>{quotaText(state.status, state.now)}</text>
-      <text fg={ctx.theme.text.muted}>/commandcode-usage</text>
     </box>;
     const Detail = () => <scrollbox flexGrow={1}>
       <text fg={ctx.theme.text.base}>{quotaText(state.status, state.now, true)}</text>
