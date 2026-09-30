@@ -1,6 +1,6 @@
 {
   "name": "@itlvd/opencode-commandcode-usage",
-  "version": "0.1.0-beta.0",
+  "version": "0.1.0-beta.1",
   "description": "Standalone Command Code provider and quota dashboard for OpenCode V2",
   "type": "module",
   "exports": {
