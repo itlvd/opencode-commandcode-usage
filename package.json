@@ -1,0 +1,45 @@
+{
+  "name": "@itlvd/opencode-commandcode-usage",
+  "version": "0.1.0-beta.0",
+  "description": "Standalone Command Code provider and quota dashboard for OpenCode V2",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tui": "./src/tui.tsx",
+    "./rpc": "./src/rpc.ts"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "tsx --test tests/*.test.ts",
+    "test:host": "tsx tests/host-smoke.ts",
+    "test:tui": "bun --preload @opentui/solid/preload tests/tui-smoke.tsx",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test",
+    "validate": "npm run check && npm run test:host"
+  },
+  "dependencies": {
+    "@opencode/plugin": "2.0.19",
+    "zod": "^4.1.0"
+  },
+  "peerDependencies": {
+    "@opentui/core": ">=0.5.12",
+    "@opentui/solid": ">=0.5.12",
+    "solid-js": ">=1.9.0"
+  },
+  "devDependencies": {
+    "@opencode/sdk": "2.0.19",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/itlvd/opencode-commandcode-usage.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
