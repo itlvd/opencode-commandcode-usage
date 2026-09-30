@@ -1,9 +1,9 @@
 # Validation — 2026-09-30
 
 - `npm run check`: TypeScript typecheck + 11 unit tests passed.
-- `npm exec --yes --package=node@26 -- npm run validate`: unit/typecheck + isolated OpenCode 2.0.19 SDK smoke passed.
+- `npm exec --yes --package=node@26 -- npm run test:host`: isolated OpenCode 2.0.19 SDK smoke passed.
 - `npm exec --yes --package=bun -- bun --preload @opentui/solid/preload tests/tui-smoke.tsx`: native OpenTUI renderer smoke passed (sidebar, quota text, command registration, narrow resize).
-- `npm pack --dry-run`: server/TUI/RPC exports and required source files included; no credential, test fixture or node_modules bundled. No package published.
+- `npm exec --yes --package=bun -- npm run test:package`: real `npm pack`/install outside source passed. Server/TUI/RPC export compiled JavaScript in `dist`; no TypeScript/TSX source bundled. Native render succeeds without JSX preload or React, and mounted UI updates from 82 to 93 models and 25% to 50% quota. Detail panel and narrow resize also pass. No package published.
 
 SDK smoke uses mock responses, a separate temporary database/config, and fake credentials. It verifies native Chat and Anthropic streams, exact provider endpoint/Authorization header, partial failures, stale snapshots, disconnect cleanup, model registration and quota RPC. Existing user setup remains unchanged. No billable request made.
 

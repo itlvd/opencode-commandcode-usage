@@ -2,20 +2,21 @@ import assert from "node:assert/strict";
 import { testRender, type JSX } from "@opentui/solid";
 import { createStore, unwrap } from "solid-js/store";
 import type { Context } from "@opencode/plugin/tui/context";
-import plugin from "../src/tui.tsx";
-import { initialStatus } from "../src/types.ts";
-import { parseQuota } from "../src/api.ts";
+const { default: plugin } = await import(process.env.PACKAGE_SMOKE ? "@itlvd/opencode-commandcode-usage/tui" : "../src/tui.tsx");
 
-const status = initialStatus();
-status.connected = true;
-status.modelCount = 82;
-status.quota = parseQuota({
-  credits: { monthlyCredits: 60, purchasedCredits: 5, freeCredits: 0, monthlyAllocation: 80 },
-  windowLimits: { fiveHour: { used: 4, cap: 16, resetAt: Date.now() + 3600000 }, weekly: { used: 12, cap: 40 } },
-}, { data: { planId: "pro", currentPeriodStart: "2026-09-01", currentPeriodEnd: "2026-10-01" } }, { totalCost: 20 });
+let status = {
+  connected: true, modelCount: 82, modelWarning: null, updatedAt: Date.now(), error: null,
+  quota: {
+    plan: "pro", fiveHour: { used: 4, cap: 16, resetAt: Date.now() + 3600000 },
+    weekly: { used: 12, cap: 40, resetAt: null }, monthly: { used: 20, cap: 80, resetAt: null },
+    remaining: { monthly: 60, purchased: 5, free: 0 }, costUSD: 20,
+    costScope: "billing-period", warnings: [],
+  },
+};
 
 const claims: { append?: string; render: (input: any) => JSX.Element }[] = [];
 const commandNames: string[] = [];
+const commands: { run: () => unknown }[] = [];
 const ctx = {
   client: { rpc: () => ({ refresh: async () => status, status: async () => status, refreshModels: async () => status }) },
   storage: { memory: (_name: string, options: { initial: object }) => {
@@ -27,17 +28,19 @@ const ctx = {
   } },
   theme: { text: { base: "#ffffff", muted: "#aaaaaa" } },
   data: { location: { default: () => ({ directory: "/smoke" }), model: { sync: async () => {} } } },
-  keymap: { layer: (factory: () => { commands: { slash: { name: string } }[] }) => {
-    commandNames.push(...factory().commands.map(command => command.slash.name));
+  keymap: { layer: (factory: () => { commands: { slash: { name: string }; run: () => unknown }[] }) => {
+    const layer = factory();
+    commands.push(...layer.commands);
+    commandNames.push(...layer.commands.map(command => command.slash.name));
   } },
   ui: { slot: (claim: typeof claims[number]) => { claims.push(claim); return () => {}; } },
 } as unknown as Context;
 
 const cleanup = await plugin.setup(ctx);
-const renderer = await testRender(() => <box flexDirection="column">
-  {claims.find(claim => claim.append === "app")!.render({})}
-  {claims.find(claim => claim.append === "sidebar.content")!.render({ sessionID: "test" })}
-</box>, { width: 45, height: 36 });
+const renderer = await testRender(() => [
+  claims.find(claim => claim.append === "app")!.render({}),
+  claims.find(claim => claim.append === "sidebar.content")!.render({ sessionID: "test" }),
+], { width: 45, height: 36 });
 try {
   await renderer.waitForFrame(frame => frame.includes("82 models"));
   const frame = renderer.captureCharFrame();
@@ -46,6 +49,10 @@ try {
   assert.match(frame, /20\.00 \/ 80\.00 credits/);
   assert.match(frame, /\$20\.00/);
   assert.deepEqual(commandNames, ["commandcode-usage", "commandcode-refresh", "commandcode-models-refresh"]);
+  status = { ...status, modelCount: 93, quota: { ...status.quota, fiveHour: { ...status.quota.fiveHour, used: 8 } } };
+  await commands[1].run();
+  await renderer.waitForFrame(frame => frame.includes("93 models") && frame.includes("50%"));
+  assert.doesNotMatch(renderer.captureCharFrame(), /82 models/);
   renderer.resize(32, 40);
   await renderer.flush();
   assert.match(renderer.captureCharFrame(), /Command Code/);

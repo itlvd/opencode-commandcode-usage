@@ -4,21 +4,24 @@
   "description": "Standalone Command Code provider and quota dashboard for OpenCode V2",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./tui": "./src/tui.tsx",
-    "./rpc": "./src/rpc.ts"
+    ".": "./dist/index.js",
+    "./tui": "./dist/tui.js",
+    "./rpc": "./dist/rpc.js"
   },
   "files": [
-    "src",
+    "dist",
     "README.md"
   ],
   "scripts": {
+    "build": "node scripts/build.mjs",
+    "prepack": "npm run build",
     "test": "tsx --test tests/*.test.ts",
     "test:host": "tsx tests/host-smoke.ts",
     "test:tui": "bun --preload @opentui/solid/preload tests/tui-smoke.tsx",
+    "test:package": "node scripts/test-package.mjs",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm test",
-    "validate": "npm run check && npm run test:host"
+    "validate": "npm run check && npm run test:host && npm run test:package"
   },
   "dependencies": {
     "@opencode/plugin": "2.0.19",
@@ -30,8 +33,11 @@
     "solid-js": ">=1.9.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.28.0",
+    "@babel/preset-typescript": "^7.27.1",
     "@opencode/sdk": "2.0.19",
     "@types/node": "^22.0.0",
+    "babel-preset-solid": "^1.9.12",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0"
   },

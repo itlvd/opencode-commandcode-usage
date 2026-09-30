@@ -8,6 +8,7 @@ Trong thư mục `opencode-commandcode-usage`, chạy:
 
 ```sh
 npm ci --ignore-scripts
+npm run build
 ```
 
 Thêm **một entry** vào mảng `plugins` trong `~/.config/opencode/opencode.jsonc` để dùng mọi project, hoặc trong cấu hình project để chỉ dùng tại đó. Giữ nguyên các setting/plugin khác:
@@ -97,7 +98,7 @@ npm run check
 SDK smoke test cần **Node >=26.4** (SDK dùng explicit resource management), chạy cô lập database/config, mock Command Code và không phát sinh chi phí:
 
 ```sh
-npm exec --yes --package=node@26 -- npm run validate
+npm exec --yes --package=node@26 --package=bun -- npm run validate
 ```
 
 Smoke kiểm tra integration riêng, kết nối key, model discovery, quota RPC, native Chat/Anthropic streaming và Authorization header. Node 22 chạy unit test/typecheck được nhưng không chạy SDK smoke được.
@@ -110,6 +111,14 @@ npm exec --yes --package=bun -- bun --preload @opentui/solid/preload tests/tui-s
 
 Kiểm tra sidebar phản ứng với dữ liệu, thanh quota, đăng ký slash command và resize terminal hẹp.
 
-Source TypeScript/TSX là entrypoint native theo plugin API V2; không cần bước compile ra `dist`. Package nhắm OpenCode **2.0.19**. UI đã qua native render smoke; vẫn cần kiểm tra trực quan trong phiên OpenCode của bạn sau khi cài.
+Regression test cho package npm thật (cần Bun):
+
+```sh
+npm exec --yes --package=bun -- npm run test:package
+```
+
+Test chạy `npm pack` (tự build qua `prepack`), cài tarball vào thư mục tạm ngoài source, rồi import/render TUI **không dùng JSX preload**. Kiểm tra cả cập nhật model/quota trên UI đã mount, panel và resize.
+
+Các export server/TUI/RPC trỏ tới JavaScript trong `dist`. Build dùng Solid compiler (`generate: "universal"`, `moduleName: "@opentui/solid"`), không bundle runtime Solid/OpenTUI để dùng chung runtime với host. Không phụ thuộc `tsconfig.json` của project khi cài npm và không cần React. Package nhắm plugin API OpenCode **2.0.19**; vẫn cần kiểm tra trực quan trong phiên OpenCode của bạn sau khi cài. Bản beta đã publish trước đây không tự thay đổi; cần phát hành bản mới hoặc dùng đường dẫn project đã build (chỉ một entry plugin).
 
 Tài liệu: [V2 plugins](https://opencode.ai/v2/docs/build/plugins/), [TUI plugins](https://opencode.ai/v2/docs/build/plugins/cli/), [Command Code usage](https://commandcode.ai/docs/resources/usage-limits).
