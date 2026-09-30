@@ -39,7 +39,7 @@ Restart service có thể ngắt các session đang chạy; thực hiện khi ph
 3. Chạy `/models`, chọn model dưới provider **Command Code Extension** (`commandcode-extension`).
 4. Sidebar hiển thị quota; `/commandcode-usage` mở panel chi tiết. Ở màn hình Home, lệnh mở dialog.
 
-Sidebar gọn: tên gói, countdown và thanh 12 ô cho `5h / weekly / monthly`, balance và spent trên cùng dòng, thời gian cập nhật. Quota thiếu allocation hiển thị `unavailable`, không giả định đã dùng 0%. Balance hiển thị ký hiệu `$` theo giao diện; giá trị vẫn là tổng balance API, không áp dụng tỷ giá credit/USD. Panel chi tiết giữ đơn vị credit, nguồn balance và cảnh báo.
+Sidebar gọn: tên gói, countdown và thanh 12 ô cho `5h / weekly / monthly`, balance và spent trên cùng dòng, thời gian cập nhật. Monthly hiển thị tổng suy ra từ spent + balance; khi thiếu nguồn balance thì hiển thị `unavailable`, không giả định đã dùng 0%. Balance hiển thị ký hiệu `$` theo giao diện; giá trị vẫn là tổng balance API, không áp dụng tỷ giá credit/USD. Panel chi tiết giữ đơn vị credit, nguồn balance và cảnh báo.
 
 Credential được lưu bởi cơ chế integration của OpenCode. Plugin không đọc file auth cũ, không lưu key trong plugin storage hoặc RPC và không ghi response body/exception có thể chứa key vào log. TUI không nhận key. Integration ID mới không trùng setup cũ.
 
@@ -59,8 +59,8 @@ Quota tự refresh 60 giây; catalog mỗi 15 phút. Countdown cập nhật mỗ
 - **1M:** chu kỳ billing, không phải 30 ngày cố định hay ngày đầu tháng. Lấy reset từ `currentPeriodEnd`.
 - **Spent USD:** chi phí thực tế từ `/alpha/usage/summary`; lọc từ `currentPeriodStart` nếu có. Không có kỳ billing thì ghi rõ `all-time`.
 - **Balance:** credit tháng, mua thêm, miễn phí được tách riêng. Tổng còn lại chỉ được cộng khi đủ cả ba nguồn.
-- Credit tháng còn lại **không phải** credit tổng của gói. Một số API chỉ trả balance, không trả allocation. Khi đó tổng/đã dùng/% tháng là `?`; plugin không lấy USD đã tiêu + balance để tạo tổng sai.
-- Nếu biết chính xác allocation tháng trong **credit**, bạn có thể khai báo override thủ công dưới đây. Nó không tự cập nhật khi nâng/hạ gói; cần sửa hoặc bỏ override khi đổi gói. `credits.monthlyAllocation`, nếu API cung cấp, được ưu tiên; field này là tương thích bổ sung, chưa được xác minh trên tài khoản thật.
+- **Tổng tháng (allocation):** API alpha không trả allocation tháng. Plugin suy ra `tổng = spent (credit) + balance còn lại`, `used = spent`, `% = spent / tổng`, dùng field credit của `/alpha/usage/summary` (`totalCredits`), fallback `totalCost` USD. Vì là suy ra, coi là **ước lượng**: nếu thiếu bất kỳ nguồn balance nào, tổng/% vẫn là `?` thay vì giả định 0. Purchased/free được gộp vào tổng như CLI chính chủ.
+- `credits.monthlyAllocation` (nếu API trả) hoặc override thủ công bên dưới được ưu tiên hơn tổng suy ra. Override không tự cập nhật khi nâng/hạ gói; cần sửa hoặc bỏ khi đổi gói.
 - Credit mua thêm có thể bypass cap 5h/tuần. Không có cap trong phản hồi có thể là tài khoản uncapped hoặc API thiếu dữ liệu; plugin ghi `not reported`, không tự kết luận hết limit.
 - API lỗi toàn bộ: giữ snapshot cũ và gắn `STALE`. Đổi connection: xóa snapshot/cached model cũ trước khi tải lại. 401/403: xóa quota và model, đề nghị kết nối lại.
 

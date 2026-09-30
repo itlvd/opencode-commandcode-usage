@@ -32,26 +32,34 @@ export function parseQuota(creditsRaw: unknown, subscriptionRaw: unknown, summar
   const limits = record(root.windowLimits), sub = record(record(subscriptionRaw).data);
   const summary = record(summaryRaw);
   const monthlyRemaining = amount(credits.monthlyCredits);
-  // Never use token cost + balance as the pool: purchased credits and model multipliers differ.
-  const allocation = amount(credits.monthlyAllocation) ?? amount(monthlyLimit);
+  const purchased = amount(credits.purchasedCredits);
+  const free = amount(credits.freeCredits);
+  // Total remaining is only meaningful when every balance source is reported.
+  const totalRemaining = monthlyRemaining !== null && purchased !== null && free !== null
+    ? monthlyRemaining + purchased + free : null;
+  // Credits already consumed within the billing period; prefer credit fields over USD.
+  const spent = amount(summary.totalCredits) ?? amount(summary.totalCost);
+  // Explicit total (API allocation or manual override) when present, otherwise derive from balance + spent.
+  const explicit = amount(credits.monthlyAllocation) ?? amount(monthlyLimit);
+  const pool = explicit !== null && monthlyRemaining !== null
+    ? Math.max(explicit, monthlyRemaining) + (purchased ?? 0) + (free ?? 0)
+    : spent !== null && totalRemaining !== null ? spent + totalRemaining : null;
   const monthlyWindow = parseWindow(limits.monthly);
   const resetAt = timestamp(sub.currentPeriodEnd);
-  const monthly = monthlyWindow ?? (monthlyRemaining !== null || resetAt !== null ? {
-    used: allocation !== null && monthlyRemaining !== null && monthlyRemaining <= allocation
-      ? allocation - monthlyRemaining : null,
-    cap: allocation, resetAt,
-  } : null);
+  const monthly = monthlyWindow ?? (pool !== null && totalRemaining !== null
+    ? { used: Math.max(0, pool - totalRemaining), cap: pool, resetAt }
+    : monthlyRemaining !== null || resetAt !== null ? { used: null, cap: null, resetAt } : null);
   const fiveHour = parseWindow(limits.fiveHour), weekly = parseWindow(limits.weekly);
   const warnings: string[] = [];
   if (!Object.keys(credits).length) warnings.push("Credit balance unavailable.");
   if (!fiveHour) warnings.push("5h limit not reported (uncapped or unavailable).");
   if (!weekly) warnings.push("Weekly limit not reported (uncapped or unavailable).");
-  if (monthly?.cap == null) warnings.push("Monthly allocation not reported; total and % are unknown.");
-  if (amount(summary.totalCost) === null) warnings.push("USD usage unavailable.");
+  if (monthly?.cap == null) warnings.push("Monthly total unavailable; report balance and spend only.");
+  if (amount(summary.totalCost) === null && amount(summary.totalCredits) === null) warnings.push("Usage amount unavailable.");
   if (!Object.keys(sub).length) warnings.push("Subscription / billing reset unavailable.");
   return {
     plan: text(sub.planId), fiveHour, weekly, monthly,
-    remaining: { monthly: monthlyRemaining, purchased: amount(credits.purchasedCredits), free: amount(credits.freeCredits) },
+    remaining: { monthly: monthlyRemaining, purchased, free },
     costUSD: amount(summary.totalCost),
     costScope: timestamp(sub.currentPeriodStart) !== null ? "billing-period" : "all-time",
     warnings,

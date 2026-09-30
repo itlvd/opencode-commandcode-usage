@@ -9,4 +9,4 @@ SDK smoke uses mock responses, a separate temporary database/config, and fake cr
 
 Production dependency audit reports **3 low-severity entries** in the upstream `@opentui/solid` → `@babel/core` chain, including propagated plugin advisory entries. No moderate/high/critical entries. npm reports no automatic fix; upstream dependency pins were not forcibly overridden. Full dev dependency audit reports 14 low-severity entries.
 
-Not verified: real account login/plan entitlements, alpha API responses for this user's account, exact monthly allocation field, and visual integration with this user's active OpenCode TUI/theme. Missing API data is shown as unknown; no derived fake USD/credit pool. Catalog endpoint is global, not proof of plan access.
+Not verified: real account login/plan entitlements, and visual integration with this user's active OpenCode TUI/theme. The alpha API exposes no monthly allocation, so the monthly total is derived as `spent credits + remaining balance` (purchased/free included); a missing balance source keeps the total unknown rather than assuming zero. Catalog endpoint is global, not proof of plan access.

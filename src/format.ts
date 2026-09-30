@@ -37,8 +37,9 @@ export function quotaText(status: Status, now: number, detail = false): string {
       `Remaining monthly: ${credit(q.remaining.monthly)} credits`,
       `Purchased: ${credit(q.remaining.purchased)} credits`, `Free: ${credit(q.remaining.free)} credits`,
       `Total remaining: ${credit(total)} credits`,
+      `Monthly total (spent + balance): ${credit(q.monthly?.cap ?? null)} credits`,
       `Spent USD (${q.costScope}): ${q.costUSD === null ? "unknown" : "$" + q.costUSD.toFixed(2)}`);
-    if (detail) lines.push(...q.warnings, "Credit units are not always USD. Purchased credits bypass rolling caps.");
+    if (detail) lines.push(...q.warnings, "Credit units are not always USD. Monthly total is derived from spend + balance when the API omits it. Purchased credits bypass rolling caps.");
   } else lines.push("Use /connect → Command Code Extension.");
   if (status.updatedAt) lines.push(`updated · ${new Date(status.updatedAt).toLocaleTimeString()}`);
   if (status.error && q) lines.push("STALE: showing last successful snapshot.");

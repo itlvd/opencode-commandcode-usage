@@ -20,15 +20,26 @@ test("unknown windows and balances never become zero", () => {
   assert.deepEqual(parseWindow({ used: 0, cap: 14 }), { used: 0, cap: 14, resetAt: null });
   assert.equal(parseWindow({ used: NaN, cap: -2 }), null);
 });
-test("monthly credit usage is never manufactured from USD spend", () => {
-  const q = parseQuota({ credits: { monthlyCredits: 40, purchasedCredits: 20 } },
-    { data: { planId: "pro", currentPeriodStart: "2026-09-01", currentPeriodEnd: "2026-10-01" } }, { totalCost: 55 });
-  assert.equal(q.monthly?.cap, null);
-  assert.equal(q.monthly?.used, null);
-  assert.equal(q.costUSD, 55);
-  assert.equal(q.costScope, "billing-period");
-  assert.equal(q.remaining.free, null);
-  assert.equal(parseQuota({ credits: { monthlyCredits: 40 } }, {}, {}, 80).monthly?.used, 40);
+test("monthly total derives from spend plus balance, but never invents missing parts", () => {
+  // All balance sources present: total = spent credits + remaining balance.
+  const derived = parseQuota(
+    { credits: { monthlyCredits: 40, purchasedCredits: 20, freeCredits: 0 } },
+    { data: { planId: "pro", currentPeriodStart: "2026-09-01", currentPeriodEnd: "2026-10-01" } },
+    { totalCredits: 55, totalCost: 55 });
+  assert.equal(derived.monthly?.cap, 115);
+  assert.equal(derived.monthly?.used, 55);
+  assert.equal(derived.costUSD, 55);
+  assert.equal(derived.costScope, "billing-period");
+  assert.equal(derived.remaining.free, 0);
+  // A missing balance source keeps the total unknown instead of assuming zero.
+  const incomplete = parseQuota({ credits: { monthlyCredits: 40, purchasedCredits: 20 } },
+    { data: { planId: "pro" } }, { totalCost: 55 });
+  assert.equal(incomplete.monthly?.cap, null);
+  assert.equal(incomplete.monthly?.used, null);
+  assert.equal(incomplete.remaining.free, null);
+  // An explicit override wins over the derived total.
+  assert.equal(parseQuota({ credits: { monthlyCredits: 40, purchasedCredits: 0, freeCredits: 0 } },
+    {}, {}, 80).monthly?.used, 40);
 });
 test("formatting handles unknown, over-cap and expired data", () => {
   const now = Date.now();

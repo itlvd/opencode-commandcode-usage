@@ -75,6 +75,8 @@ try {
     assert.equal(result.modelCount, 2);
     assert.equal(result.quota?.costUSD, 20);
     assert.equal(result.quota?.fiveHour?.used, 4);
+    assert.equal(result.quota?.monthly?.cap, 85);
+    assert.equal(result.quota?.monthly?.used, 20);
     const models = await host.model.list({ location });
     assert.equal(models.data.filter(model => model.providerID === "commandcode-extension").length, 2);
     assert.ok(!JSON.stringify(result).includes("smoke-only-not-real"));
