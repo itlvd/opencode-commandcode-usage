@@ -39,6 +39,8 @@ Restart service có thể ngắt các session đang chạy; thực hiện khi ph
 3. Chạy `/models`, chọn model dưới provider **Command Code Extension** (`commandcode-extension`).
 4. Sidebar hiển thị quota; `/commandcode-usage` mở panel chi tiết. Ở màn hình Home, lệnh mở dialog.
 
+Sidebar gọn: tên gói, countdown và thanh 12 ô cho `5h / weekly / monthly`, balance và spent trên cùng dòng, thời gian cập nhật. Quota thiếu allocation hiển thị `unavailable`, không giả định đã dùng 0%. Balance hiển thị ký hiệu `$` theo giao diện; giá trị vẫn là tổng balance API, không áp dụng tỷ giá credit/USD. Panel chi tiết giữ đơn vị credit, nguồn balance và cảnh báo.
+
 Credential được lưu bởi cơ chế integration của OpenCode. Plugin không đọc file auth cũ, không lưu key trong plugin storage hoặc RPC và không ghi response body/exception có thể chứa key vào log. TUI không nhận key. Integration ID mới không trùng setup cũ.
 
 ## Các lệnh

@@ -42,17 +42,18 @@ const renderer = await testRender(() => [
   claims.find(claim => claim.append === "sidebar.content")!.render({ sessionID: "test" }),
 ], { width: 45, height: 36 });
 try {
-  await renderer.waitForFrame(frame => frame.includes("82 models"));
+  await renderer.waitForFrame(frame => frame.includes("Command Code · pro"));
   const frame = renderer.captureCharFrame();
   assert.match(frame, /25%/);
   assert.match(frame, /30%/);
-  assert.match(frame, /20\.00 \/ 80\.00 credits/);
+  assert.match(frame, /\[███░░░░░░░░░\] 25% used/);
+  assert.match(frame, /balance · \$65\.00 · \$20\.00 spent/);
   assert.match(frame, /\$20\.00/);
   assert.deepEqual(commandNames, ["commandcode-usage", "commandcode-refresh", "commandcode-models-refresh"]);
-  status = { ...status, modelCount: 93, quota: { ...status.quota, fiveHour: { ...status.quota.fiveHour, used: 8 } } };
+  status = { ...status, modelCount: 93, quota: { ...status.quota, plan: "individual-goat", fiveHour: { ...status.quota.fiveHour, used: 8 } } };
   await commands[1].run();
-  await renderer.waitForFrame(frame => frame.includes("93 models") && frame.includes("50%"));
-  assert.doesNotMatch(renderer.captureCharFrame(), /82 models/);
+  await renderer.waitForFrame(frame => frame.includes("individual-goat") && frame.includes("50%"));
+  assert.doesNotMatch(renderer.captureCharFrame(), /Command Code · pro/);
   renderer.resize(32, 40);
   await renderer.flush();
   assert.match(renderer.captureCharFrame(), /Command Code/);
@@ -61,6 +62,8 @@ try {
   try {
     await panel.renderOnce();
     assert.match(panel.captureCharFrame(), /Credit units are not always USD/);
+    assert.match(panel.captureCharFrame(), /93 models/);
+    assert.match(panel.captureCharFrame(), /20\.00 \/ 80\.00 credits/);
     assert.match(panel.captureCharFrame(), /commandcode-models-refresh/);
   } finally { panel.renderer.destroy(); }
   console.log("TUI native render smoke passed: reactive sidebar, detail panel, quota meters, slash commands and narrow resize.");
