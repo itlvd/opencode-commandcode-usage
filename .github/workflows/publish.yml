@@ -1,0 +1,61 @@
+name: Publish plugin
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '26'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.2'
+
+      - name: Install npm with OIDC support
+        run: npm install --global npm@11
+
+      - name: Verify tag matches package version
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            if (process.env.GITHUB_REF_NAME !== `v${pkg.version}`) {
+              throw new Error("Git tag must match package.json version");
+            }
+          '
+
+      - run: npm ci --ignore-scripts
+
+      - name: Typecheck, unit tests and SDK smoke
+        run: npm run validate
+
+      - name: Native TUI smoke
+        run: npm run test:tui
+
+      - name: Inspect package
+        run: npm pack --dry-run
+
+      - name: Publish beta
+        run: npm publish --access public --tag beta
