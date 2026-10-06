@@ -57,5 +57,5 @@ jobs:
       - name: Inspect package
         run: npm pack --dry-run
 
-      - name: Publish beta
-        run: npm publish --access public --tag beta
+      - name: Publish latest
+        run: npm publish --access public --tag latest

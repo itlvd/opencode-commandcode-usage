@@ -16,9 +16,15 @@ try {
   assert(packed.files.some(file => file.path === "dist/tui.js"));
   assert(!packed.files.some(file => /\.(ts|tsx)$/.test(file.path)));
   await writeFile(join(temp, "package.json"), JSON.stringify({ private: true, type: "module" }));
-  run("npm", ["install", "--ignore-scripts", "--no-audit", "--no-fund", join(temp, packed.filename)]);
+  run("npm", ["install", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund", join(temp, packed.filename)]);
   const manifest = JSON.parse(await readFile(join(temp, "node_modules/@itlvd/opencode-commandcode-usage/package.json"), "utf8"));
   assert.equal(manifest.exports["./tui"], "./dist/tui.js");
+  for (const dependency of ["@opentui/core", "@opentui/solid", "solid-js"]) {
+    assert.ok(manifest.dependencies?.[dependency], `${dependency} must be a runtime dependency`);
+  }
+  const tui = await readFile(join(temp, "node_modules/@itlvd/opencode-commandcode-usage/dist/tui.js"), "utf8");
+  assert.match(tui, /from ["']@opentui\/solid["']/);
+  assert.doesNotMatch(tui, /(?:from\s*["']react(?:\/[^"']*)?["']|React\.createElement)/);
   await writeFile(join(temp, "exports.ts"), `
     import assert from "node:assert/strict";
     import server from "@itlvd/opencode-commandcode-usage";

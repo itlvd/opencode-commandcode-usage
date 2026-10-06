@@ -1,76 +1,60 @@
-# Command Code Extension — OpenCode V2 TUI
+# Command Code Usage for OpenCode
 
-Plugin độc lập: kết nối Command Code, tải catalog model, hiển thị usage **5h / 1w / 1M**, reset countdown và credit. Không sửa/xóa provider hay credential hiện tại của bạn.
+A Command Code provider and usage dashboard for OpenCode V2. Connect your account, discover models, and track your usage directly in the terminal.
 
-## Cài từ project này
+## Features
 
-Trong thư mục `opencode-commandcode-usage`, chạy:
+- Connect with your Command Code API key through OpenCode's `/connect` flow.
+- Discover the Command Code model catalog and select models from `/models`.
+- View five-hour, weekly, and monthly usage, reset countdowns, credit balance, and spending in the sidebar.
+- Open a detailed usage panel with quota sources and status messages.
+- Refresh usage automatically every 60 seconds and the model catalog every 15 minutes.
 
-```sh
-npm ci --ignore-scripts
-npm run build
-```
+The plugin registers a separate **Command Code Extension** provider. OpenCode manages credentials; the TUI receives usage data through RPC.
 
-Thêm **một entry** vào mảng `plugins` trong `~/.config/opencode/opencode.jsonc` để dùng mọi project, hoặc trong cấu hình project để chỉ dùng tại đó. Giữ nguyên các setting/plugin khác:
+## Installation
+
+The package targets the OpenCode V2 plugin API (`@opencode/plugin` 2.0.19).
+
+Add the package to `plugins` in your global `~/.config/opencode/opencode.json` or `opencode.jsonc`. Use a project configuration instead if you only want it enabled for that project.
 
 ```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugins": [
-    "/Users/levandong/Desktop/src/finance/opencode-commandcode-usage"
-  ]
+  "plugins": ["@itlvd/opencode-commandcode-usage@0.1.2"]
 }
 ```
 
-Nếu chuyển thư mục, đổi đường dẫn tương ứng. Không chỉ thêm vào `cli.json`: plugin cần **server + TUI**. OpenCode tải `./tui` từ package tự động.
+Keep a single entry for this plugin, preserving your other plugins and settings. Restart OpenCode after changing the configuration. OpenCode loads both the server entrypoint and the package's `./tui` export.
 
-Khởi động lại OpenCode sau khi thêm plugin. Nếu server chưa nhận cấu hình:
+## Usage
 
-```sh
-opencode service restart
-```
+1. Run `/connect`, select **Command Code Extension**, and enter your Command Code API key.
+2. Run `/commandcode-models-refresh` to load the model catalog.
+3. Run `/models` and select a model under **Command Code Extension**.
+4. Check the sidebar or run `/commandcode-usage` for details.
 
-Restart service có thể ngắt các session đang chạy; thực hiện khi phù hợp.
-
-## Kết nối và chọn model
-
-1. Chạy `/connect`, chọn **Command Code Extension**, nhập API key từ Command Code Studio vào giao diện kết nối của OpenCode — không gửi key trong chat.
-2. Chạy `/commandcode-models-refresh`.
-3. Chạy `/models`, chọn model dưới provider **Command Code Extension** (`commandcode-extension`).
-4. Sidebar hiển thị quota; `/commandcode-usage` mở panel chi tiết. Ở màn hình Home, lệnh mở dialog.
-
-Sidebar gọn: tên gói, countdown và thanh 12 ô cho `5h / weekly / monthly`, balance và spent trên cùng dòng, thời gian cập nhật. Monthly hiển thị tổng suy ra từ spent + balance; khi thiếu nguồn balance thì hiển thị `unavailable`, không giả định đã dùng 0%. Balance hiển thị ký hiệu `$` theo giao diện; giá trị vẫn là tổng balance API, không áp dụng tỷ giá credit/USD. Panel chi tiết giữ đơn vị credit, nguồn balance và cảnh báo.
-
-Credential được lưu bởi cơ chế integration của OpenCode. Plugin không đọc file auth cũ, không lưu key trong plugin storage hoặc RPC và không ghi response body/exception có thể chứa key vào log. TUI không nhận key. Integration ID mới không trùng setup cũ.
-
-## Các lệnh
-
-| Lệnh | Tác dụng |
+| Command | Description |
 | --- | --- |
-| `/commandcode-usage` | Mở bảng chi tiết usage/reset |
-| `/commandcode-refresh` | Làm mới usage ngay |
-| `/commandcode-models-refresh` | Tải lại catalog, đồng bộ danh sách model |
+| `/commandcode-usage` | Open the usage panel, or a dialog on the Home screen. |
+| `/commandcode-refresh` | Refresh usage immediately. |
+| `/commandcode-models-refresh` | Refresh the catalog and synchronize available models. |
 
-Quota tự refresh 60 giây; catalog mỗi 15 phút. Countdown cập nhật mỗi giây mà không gọi API. TUI đọc trạng thái server mỗi 5 giây. Request đồng thời được gộp; unload hủy request/timer.
+### Reading the dashboard
 
-## Đơn vị và độ chính xác
+Five-hour and weekly limits use the credit values reported by Command Code. Monthly usage follows the billing period. When no explicit monthly allocation is available, the plugin estimates it from spending plus remaining credits, including purchased and free credits. Missing values remain unknown; failed refreshes retain the last snapshot with a status message.
 
-- **5h / tuần:** lấy `used`, `cap`, `resetAt` trực tiếp từ `windowLimits`; đơn vị **credit**, không giả định là USD.
-- **1M:** chu kỳ billing, không phải 30 ngày cố định hay ngày đầu tháng. Lấy reset từ `currentPeriodEnd`.
-- **Spent USD:** chi phí thực tế từ `/alpha/usage/summary`; lọc từ `currentPeriodStart` nếu có. Không có kỳ billing thì ghi rõ `all-time`.
-- **Balance:** credit tháng, mua thêm, miễn phí được tách riêng. Tổng còn lại chỉ được cộng khi đủ cả ba nguồn.
-- **Tổng tháng (allocation):** API alpha không trả allocation tháng. Plugin suy ra `tổng = spent (credit) + balance còn lại`, `used = spent`, `% = spent / tổng`, dùng field credit của `/alpha/usage/summary` (`totalCredits`), fallback `totalCost` USD. Vì là suy ra, coi là **ước lượng**: nếu thiếu bất kỳ nguồn balance nào, tổng/% vẫn là `?` thay vì giả định 0. Purchased/free được gộp vào tổng như CLI chính chủ.
-- `credits.monthlyAllocation` (nếu API trả) hoặc override thủ công bên dưới được ưu tiên hơn tổng suy ra. Override không tự cập nhật khi nâng/hạ gói; cần sửa hoặc bỏ khi đổi gói.
-- Credit mua thêm có thể bypass cap 5h/tuần. Không có cap trong phản hồi có thể là tài khoản uncapped hoặc API thiếu dữ liệu; plugin ghi `not reported`, không tự kết luận hết limit.
-- API lỗi toàn bộ: giữ snapshot cũ và gắn `STALE`. Đổi connection: xóa snapshot/cached model cũ trước khi tải lại. 401/403: xóa quota và model, đề nghị kết nối lại.
+Credit values are not always equivalent to USD. The detail panel identifies units and sources. The model catalog is shared across accounts, so individual models may still require access under your plan. Usage endpoints are part of Command Code's alpha API and may change.
 
-Ví dụ cấu hình tùy chọn:
+### Options
+
+Use an object entry to customize the plugin:
 
 ```jsonc
 {
   "plugins": [
     {
-      "package": "/Users/levandong/Desktop/src/finance/opencode-commandcode-usage",
+      "package": "@itlvd/opencode-commandcode-usage@0.1.2",
       "options": {
         "refreshIntervalMs": 60000,
         "monthlyCreditLimit": 80
@@ -80,47 +64,79 @@ Ví dụ cấu hình tùy chọn:
 }
 ```
 
-`80` chỉ minh họa, **không phải** giá trị mặc định. Không đổi credit sang `$` nếu gói/model có hệ số quy đổi khác.
+`refreshIntervalMs` defaults to 60,000 ms, with a minimum of 15,000 ms. `monthlyCreditLimit` is an optional allocation override in credits; `80` is only an example. Omit it to use API data or the derived estimate, and update it when your plan changes.
 
-## Model và giới hạn hiện tại
+## Local development
 
-- Catalog live: `https://api.commandcode.ai/provider/v1/models`. Chọn Anthropic-compatible cho `/messages`, OpenAI-compatible cho `/chat/completions`, giữ nguyên model ID có dấu `/`.
-- Catalog hiện là danh sách **chung**, không đảm bảo mọi model đều được gói của bạn cấp quyền. Plugin đưa mọi model chat hợp lệ vào `/models`; Command Code kiểm tra quyền ở request. Không gọi từng model để probe vì sẽ tốn tiền.
-- Metadata giá token/vision/reasoning không đầy đủ trong catalog. Không suy đoán giá; `cost: []` nghĩa là **chưa biết**, không có nghĩa model miễn phí. Dùng USD usage của tài khoản để xem chi phí thật.
-- Model mặc định text-only khi API không báo image input; output mặc định 32K nếu không báo max output. Chưa tự tạo reasoning variants hoặc hỗ trợ transport `/alpha/generate` cho gói không có Provider API access.
-- API usage `/alpha/whoami`, `/alpha/billing/credits`, `/alpha/billing/subscriptions`, `/alpha/usage/summary` là **alpha**, có thể đổi schema. Field thiếu hiển thị unknown; không có dữ liệu hợp lệ thì báo lỗi.
-- Chưa kiểm thử đăng nhập và usage với tài khoản thật; không dùng key/setup hiện tại của bạn. Chỉ bỏ setup cũ sau khi thử provider mới thành công.
+### Prerequisites
 
-## Kiểm thử
+- Node.js **26.4 or newer** for the SDK smoke test and OpenTUI runtime requirements.
+- npm for dependency installation and scripts.
+- Bun **1.4.2**, matching CI, for native TUI and package smoke tests.
+- OpenCode V2 to try the plugin interactively.
+
+### Set up the repository
 
 ```sh
+git clone https://github.com/itlvd/opencode-commandcode-usage.git
+cd opencode-commandcode-usage
+npm ci --ignore-scripts
+npm run build
+```
+
+The build compiles TypeScript and Solid JSX into `dist/`. Package exports point to these JavaScript files. OpenTUI and Solid are runtime dependencies; the TUI uses the Solid compiler and requires no React installation.
+
+### Load your local build
+
+Replace the npm entry for this plugin with the absolute path to your checkout:
+
+```jsonc
+{
+  "plugins": ["/absolute/path/to/opencode-commandcode-usage"]
+}
+```
+
+Register the local package in `opencode.json` or `opencode.jsonc` so OpenCode loads both its server and TUI components. After editing source files, run `npm run build` and restart OpenCode to load the new output. If the background service still uses the previous build, run `opencode service restart` when you can interrupt active sessions.
+
+### Project layout
+
+| Path | Purpose |
+| --- | --- |
+| `src/index.ts` | Provider registration, credentials, refresh scheduling, and RPC handlers. |
+| `src/tui.tsx` | Sidebar, detail panel, and slash commands. |
+| `src/api.ts` | Command Code API requests and quota parsing. |
+| `src/models.ts` | Model catalog normalization. |
+| `src/format.ts` | Usage text, quota meters, and countdown formatting. |
+| `src/rpc.ts`, `src/types.ts` | Shared RPC contract and status types. |
+| `scripts/build.mjs` | TypeScript and Solid JSX compilation. |
+| `tests/` | Unit tests and SDK/TUI smoke tests. |
+
+### Run checks
+
+```sh
+# TypeScript and unit tests
 npm run check
+
+# TypeScript, unit tests, SDK integration, and installed package smoke test
+npm run validate
+
+# Render the source TUI with the native OpenTUI renderer
+npm run test:tui
 ```
 
-SDK smoke test cần **Node >=26.4** (SDK dùng explicit resource management), chạy cô lập database/config, mock Command Code và không phát sinh chi phí:
+The SDK smoke test uses isolated configuration and a temporary database. Provider requests are mocked, so it needs no real API key and makes no billable requests. The TUI smoke test checks rendering, reactive updates, commands, and narrow terminal layouts.
+
+`npm run test:package` builds and packs the package, installs the tarball with production dependencies in a temporary directory outside the repository, and checks its exports and TUI rendering without a JSX preload. It requires npm registry access to install dependencies. `npm pack` also runs the build automatically through `prepack`.
+
+If Node 26 and Bun are not on your PATH, you can run the full checks with temporary npm-managed runtimes:
 
 ```sh
-npm exec --yes --package=node@26 --package=bun -- npm run validate
+npm exec --yes --package=node@26 --package=bun@1.4.2 -- npm run validate
+npm exec --yes --package=node@26 --package=bun@1.4.2 -- npm run test:tui
 ```
 
-Smoke kiểm tra integration riêng, kết nối key, model discovery, quota RPC, native Chat/Anthropic streaming và Authorization header. Node 22 chạy unit test/typecheck được nhưng không chạy SDK smoke được.
+## References
 
-Native TUI render smoke dùng Bun và renderer OpenTUI thật với dữ liệu mock:
-
-```sh
-npm exec --yes --package=bun -- bun --preload @opentui/solid/preload tests/tui-smoke.tsx
-```
-
-Kiểm tra sidebar phản ứng với dữ liệu, thanh quota, đăng ký slash command và resize terminal hẹp.
-
-Regression test cho package npm thật (cần Bun):
-
-```sh
-npm exec --yes --package=bun -- npm run test:package
-```
-
-Test chạy `npm pack` (tự build qua `prepack`), cài tarball vào thư mục tạm ngoài source, rồi import/render TUI **không dùng JSX preload**. Kiểm tra cả cập nhật model/quota trên UI đã mount, panel và resize.
-
-Các export server/TUI/RPC trỏ tới JavaScript trong `dist`. Build dùng Solid compiler (`generate: "universal"`, `moduleName: "@opentui/solid"`), không bundle runtime Solid/OpenTUI để dùng chung runtime với host. Không phụ thuộc `tsconfig.json` của project khi cài npm và không cần React. Package nhắm plugin API OpenCode **2.0.19**; vẫn cần kiểm tra trực quan trong phiên OpenCode của bạn sau khi cài. Bản beta đã publish trước đây không tự thay đổi; cần phát hành bản mới hoặc dùng đường dẫn project đã build (chỉ một entry plugin).
-
-Tài liệu: [V2 plugins](https://opencode.ai/v2/docs/build/plugins/), [TUI plugins](https://opencode.ai/v2/docs/build/plugins/cli/), [Command Code usage](https://commandcode.ai/docs/resources/usage-limits).
+- [OpenCode V2 plugins](https://opencode.ai/v2/docs/build/plugins/)
+- [OpenCode TUI plugins](https://opencode.ai/v2/docs/build/plugins/cli/)
+- [Command Code usage limits](https://commandcode.ai/docs/resources/usage-limits)
